@@ -22,10 +22,11 @@ const registerRoutes = require('./routes');
 // Register Swagger documentation
 fastify.register(swagger, {
   openapi: {
+    openapi: '3.0.0',
     info: {
-      title: 'WPP API',
-      description: 'API para integração com WhatsApp usando WPPConnect. Permite enviar e receber mensagens, gerenciar sessões e fazer upload de mídia.',
-      version: '1.0.0',
+      title: 'WPPConnect API Rest',
+      description: 'Welcome to the wppconnect-server API documentation. This API provides a set of endpoints to interact with the wppconnect-server application, allowing you to build integrations and automate interactions with WhatsApp.',
+      version: '2.0.0',
       contact: {
         name: 'Suporte',
       },
@@ -37,11 +38,28 @@ fastify.register(swagger, {
       },
     ],
     tags: [
-      { name: 'Health', description: 'Verificação de saúde da API' },
-      { name: 'Sessions', description: 'Gerenciamento de sessões WhatsApp' },
-      { name: 'Messages', description: 'Envio e recebimento de mensagens' },
-      { name: 'Media', description: 'Upload e gerenciamento de arquivos' },
+      { name: 'Auth', description: 'Authentication and session management' },
+      { name: 'Chat', description: 'Manages chat-related operations' },
+      { name: 'Contact', description: 'Handles operations related to contacts, such as managing contact lists, adding or removing contacts, and retrieving contact information' },
+      { name: 'Catalog & Business', description: 'Handles operations related to catalogs and business-related functionalities, such as managing product catalogs and business information' },
+      { name: 'Community', description: 'Manage communities' },
+      { name: 'Messages', description: 'Handles message-related operations, including sending, receiving, and managing messages' },
+      { name: 'Profile', description: 'Manages user profile-related operations, such as retrieving and updating profile information' },
+      { name: 'Status Stories', description: 'Handles operations related to status stories, such as viewing, updating, and managing status stories' },
+      { name: 'Labels', description: 'Manages labels or tags associated with chats or messages for organization and categorization purposes' },
+      { name: 'Group', description: 'Manages operations related to WhatsApp groups, such as creating, modifying, and managing group settings' },
+      { name: 'Misc', description: 'Handles miscellaneous operations that do not fit into other specific categories' },
+      { name: 'Health', description: 'Health check endpoints' },
     ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+    },
   },
 });
 
