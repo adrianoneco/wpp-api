@@ -27,7 +27,7 @@ class WppConnectService {
 
   async createSession(sessionName) {
     if (this.sessions.has(sessionName)) {
-      return { success: false, message: 'Session already exists' };
+      return { success: true, message: 'Session already exists', sessionName };
     }
 
     try {
@@ -43,11 +43,18 @@ class WppConnectService {
 
       const client = await wppconnect.create({
         session: sessionName,
+        deviceName: `${config.instance.appProvider}_${sessionName}`.toUpperCase(),
         headless: config.wppconnect.headless,
         useChrome: false,
-        folderNameToken: config.instance.tokensPath,
+        folderNameToken: '/data/tokens',
+        mkdirFolderToken: '',
+        browserFolderPath: '/data/browser',
+        autoClose: 0,
+        createPathFileToken: true,
+        waitForLogin: true,
+        logQR: true,
         puppeteerOptions: {
-          userDataDir: path.join(config.instance.cachePath, sessionName),
+          userDataDir: '/data/browser',
           args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -58,11 +65,13 @@ class WppConnectService {
             '--disable-gpu',
           ],
         },
-        catchQR: async (base64Qrimg, asciiQR, attempts) => {
+        catchQR: async (base64Qrimg, asciiQR, attempts, urlCode) => {
           console.log(`QR Code received for session ${sessionName}, attempt ${attempts}`);
+          console.log(`QR URL Code: ${urlCode}`);
+          // Store both the image and the URL code
           await Session.findOneAndUpdate(
             { name: sessionName },
-            { status: 'qr_code', qrCode: base64Qrimg }
+            { status: 'qr_code', qrCode: base64Qrimg, qrCodeUrl: urlCode }
           );
         },
         statusFind: async (statusSession, session) => {
@@ -80,29 +89,35 @@ class WppConnectService {
         },
       });
 
+      // Add session to Map immediately
       this.sessions.set(sessionName, client);
 
       // Set up event handlers
       this.setupEventHandlers(client, sessionName);
 
-      // Update session status
-      const phoneNumber = await client.getWid();
-      await Session.findOneAndUpdate(
-        { name: sessionName },
-        { 
-          status: 'authenticated',
-          phoneNumber: phoneNumber?._serialized || null,
-          lastConnected: new Date(),
-          qrCode: null,
-        }
-      );
+      // Try to get phone number if already authenticated
+      try {
+        const phoneNumber = await client.getWid();
+        await Session.findOneAndUpdate(
+          { name: sessionName },
+          { 
+            status: 'authenticated',
+            phoneNumber: phoneNumber?._serialized || null,
+            lastConnected: new Date(),
+            qrCode: null,
+          }
+        );
+      } catch (err) {
+        // Not authenticated yet, keep as qr_code or connecting
+        console.log(`Session ${sessionName} waiting for authentication`);
+      }
 
-      return { success: true, message: 'Session created successfully' };
+      return { success: true, message: 'Session created successfully', sessionName };
     } catch (error) {
       console.error(`Error creating session ${sessionName}:`, error.message);
       await Session.findOneAndUpdate(
         { name: sessionName },
-        { status: 'disconnected' }
+        { status: 'error', error: error.message }
       );
       throw error;
     }
@@ -339,6 +354,89 @@ class WppConnectService {
 
   getAllSessions() {
     return Array.from(this.sessions.keys());
+  }
+
+  async takeScreenshot(sessionName) {
+    const client = this.sessions.get(sessionName);
+    if (!client) {
+      throw new Error('Session not found or not connected');
+    }
+
+    try {
+      const page = client.page;
+      if (!page) {
+        throw new Error('Browser page not available');
+      }
+      
+      const screenshot = await page.screenshot({
+        type: 'png',
+        fullPage: false,
+        encoding: 'base64'
+      });
+      
+      return screenshot;
+    } catch (error) {
+      console.error(`Error taking screenshot for ${sessionName}:`, error.message);
+      throw error;
+    }
+  }
+
+  async getScreenshotStream(sessionName) {
+    const client = this.sessions.get(sessionName);
+    if (!client) {
+      throw new Error('Session not found or not connected');
+    }
+
+    try {
+      const page = client.page;
+      if (!page) {
+        throw new Error('Browser page not available');
+      }
+      
+      const screenshot = await page.screenshot({
+        type: 'jpeg',
+        quality: 70,
+        fullPage: false
+      });
+      
+      return screenshot;
+    } catch (error) {
+      console.error(`Error getting screenshot stream for ${sessionName}:`, error.message);
+      throw error;
+    }
+  }
+
+  getBrowserPage(sessionName) {
+    const client = this.sessions.get(sessionName);
+    if (!client) {
+      return null;
+    }
+    return client.page || null;
+  }
+
+  async initializeInstanceSession(instanceName) {
+    // Check if session already exists in memory
+    if (this.sessions.has(instanceName)) {
+      console.log(`✅ Session '${instanceName}' already active`);
+      return { success: true, message: 'Session already active' };
+    }
+
+    // Check if session exists in database
+    const existingSession = await Session.findOne({ name: instanceName });
+    
+    if (existingSession) {
+      console.log(`📱 Restoring session '${instanceName}'...`);
+    } else {
+      console.log(`📱 Creating new session '${instanceName}'...`);
+    }
+
+    try {
+      await this.createSession(instanceName);
+      return { success: true, message: 'Session initialized' };
+    } catch (error) {
+      console.error(`❌ Failed to initialize session '${instanceName}':`, error.message);
+      return { success: false, error: error.message };
+    }
   }
 }
 

@@ -1,11 +1,63 @@
 const { wppConnectService } = require('../services');
 const { Message } = require('../models');
+const config = require('../config');
+
+// Schema definitions
+const sessionNameParam = {
+  type: 'object',
+  properties: {
+    sessionName: { type: 'string', description: 'Nome da sessão WhatsApp' },
+  },
+  required: ['sessionName'],
+};
+
+const errorResponse = {
+  type: 'object',
+  properties: {
+    success: { type: 'boolean' },
+    error: { type: 'string' },
+  },
+};
+
+const phoneNumber = {
+  type: 'string',
+  description: 'Número de telefone com código do país (ex: 5511999999999)',
+};
 
 async function messageRoutes(fastify) {
-  // Send text message
-  fastify.post('/sessions/:sessionName/messages/text', async (request, reply) => {
+  // === Default instance routes (uses INSTANCE_NAME from env) ===
+  
+  // Send text message using default instance
+  fastify.post('/messages/text', {
+    schema: {
+      tags: ['Messages'],
+      summary: 'Enviar mensagem de texto (instância padrão)',
+      description: `Envia mensagem usando a instância configurada (${config.instance.name})`,
+      body: {
+        type: 'object',
+        required: ['to', 'message'],
+        properties: {
+          to: phoneNumber,
+          message: {
+            type: 'string',
+            description: 'Conteúdo da mensagem',
+          },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'object' },
+          },
+        },
+        400: errorResponse,
+        500: errorResponse,
+      },
+    },
+  }, async (request, reply) => {
     try {
-      const { sessionName } = request.params;
       const { to, message } = request.body;
 
       if (!to || !message) {
@@ -13,7 +65,7 @@ async function messageRoutes(fastify) {
         return { success: false, error: 'to and message are required' };
       }
 
-      const result = await wppConnectService.sendTextMessage(sessionName, to, message);
+      const result = await wppConnectService.sendTextMessage(config.instance.name, to, message);
       return { success: true, message: result };
     } catch (error) {
       reply.code(500);
@@ -21,10 +73,41 @@ async function messageRoutes(fastify) {
     }
   });
 
-  // Send image message
-  fastify.post('/sessions/:sessionName/messages/image', async (request, reply) => {
+  // Send image message using default instance
+  fastify.post('/messages/image', {
+    schema: {
+      tags: ['Messages'],
+      summary: 'Enviar imagem (instância padrão)',
+      description: `Envia imagem usando a instância configurada (${config.instance.name})`,
+      body: {
+        type: 'object',
+        required: ['to', 'image'],
+        properties: {
+          to: phoneNumber,
+          image: {
+            type: 'string',
+            description: 'Imagem em formato base64',
+          },
+          caption: {
+            type: 'string',
+            description: 'Legenda da imagem (opcional)',
+          },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'object' },
+          },
+        },
+        400: errorResponse,
+        500: errorResponse,
+      },
+    },
+  }, async (request, reply) => {
     try {
-      const { sessionName } = request.params;
       const { to, image, caption } = request.body;
 
       if (!to || !image) {
@@ -32,7 +115,7 @@ async function messageRoutes(fastify) {
         return { success: false, error: 'to and image (base64) are required' };
       }
 
-      const result = await wppConnectService.sendImageMessage(sessionName, to, image, caption);
+      const result = await wppConnectService.sendImageMessage(config.instance.name, to, image, caption);
       return { success: true, message: result };
     } catch (error) {
       reply.code(500);
@@ -40,10 +123,49 @@ async function messageRoutes(fastify) {
     }
   });
 
-  // Send file message
-  fastify.post('/sessions/:sessionName/messages/file', async (request, reply) => {
+  // Send file message using default instance
+  fastify.post('/messages/file', {
+    schema: {
+      tags: ['Messages'],
+      summary: 'Enviar arquivo (instância padrão)',
+      description: `Envia arquivo usando a instância configurada (${config.instance.name})`,
+      body: {
+        type: 'object',
+        required: ['to', 'file', 'filename', 'mimetype'],
+        properties: {
+          to: phoneNumber,
+          file: {
+            type: 'string',
+            description: 'Arquivo em formato base64',
+          },
+          filename: {
+            type: 'string',
+            description: 'Nome do arquivo com extensão',
+          },
+          mimetype: {
+            type: 'string',
+            description: 'Tipo MIME do arquivo',
+          },
+          caption: {
+            type: 'string',
+            description: 'Legenda do arquivo (opcional)',
+          },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'object' },
+          },
+        },
+        400: errorResponse,
+        500: errorResponse,
+      },
+    },
+  }, async (request, reply) => {
     try {
-      const { sessionName } = request.params;
       const { to, file, filename, mimetype, caption } = request.body;
 
       if (!to || !file || !filename || !mimetype) {
@@ -51,78 +173,8 @@ async function messageRoutes(fastify) {
         return { success: false, error: 'to, file (base64), filename, and mimetype are required' };
       }
 
-      const result = await wppConnectService.sendFileMessage(sessionName, to, file, filename, mimetype, caption);
+      const result = await wppConnectService.sendFileMessage(config.instance.name, to, file, filename, mimetype, caption);
       return { success: true, message: result };
-    } catch (error) {
-      reply.code(500);
-      return { success: false, error: error.message };
-    }
-  });
-
-  // Get messages from database
-  fastify.get('/sessions/:sessionName/messages', async (request, reply) => {
-    try {
-      const { sessionName } = request.params;
-      const { from, to, limit = 50, page = 1 } = request.query;
-
-      const query = { sessionId: sessionName };
-      if (from) query.from = from;
-      if (to) query.to = to;
-
-      const messages = await Message.find(query)
-        .sort({ timestamp: -1 })
-        .limit(parseInt(limit))
-        .skip((parseInt(page) - 1) * parseInt(limit));
-
-      const total = await Message.countDocuments(query);
-
-      return {
-        success: true,
-        messages,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total,
-          pages: Math.ceil(total / parseInt(limit)),
-        },
-      };
-    } catch (error) {
-      reply.code(500);
-      return { success: false, error: error.message };
-    }
-  });
-
-  // Get chats
-  fastify.get('/sessions/:sessionName/chats', async (request, reply) => {
-    try {
-      const { sessionName } = request.params;
-      const chats = await wppConnectService.getChats(sessionName);
-      return { success: true, chats };
-    } catch (error) {
-      reply.code(500);
-      return { success: false, error: error.message };
-    }
-  });
-
-  // Get contacts
-  fastify.get('/sessions/:sessionName/contacts', async (request, reply) => {
-    try {
-      const { sessionName } = request.params;
-      const contacts = await wppConnectService.getContacts(sessionName);
-      return { success: true, contacts };
-    } catch (error) {
-      reply.code(500);
-      return { success: false, error: error.message };
-    }
-  });
-
-  // Get chat messages (from WhatsApp)
-  fastify.get('/sessions/:sessionName/chats/:chatId/messages', async (request, reply) => {
-    try {
-      const { sessionName, chatId } = request.params;
-      const { count = 20 } = request.query;
-      const messages = await wppConnectService.getMessages(sessionName, chatId, parseInt(count));
-      return { success: true, messages };
     } catch (error) {
       reply.code(500);
       return { success: false, error: error.message };

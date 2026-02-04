@@ -3,6 +3,7 @@ FROM node:18-slim
 # Install required dependencies for Puppeteer/Chromium
 RUN apt-get update && apt-get install -y \
     chromium \
+    curl \
     fonts-ipafont-gothic \
     fonts-wqy-zenhei \
     fonts-thai-tlwg \
@@ -28,6 +29,10 @@ RUN npm ci --only=production
 # Copy source code
 COPY . .
 
+# Copy and set executable permissions for entrypoint
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 # Create data directory with proper permissions
 RUN mkdir -p /data && chown -R node:node /data /app
 
@@ -37,5 +42,6 @@ USER node
 # Expose port
 EXPOSE 3000
 
-# Start the application
-CMD ["npm", "start"]
+VOLUME ["/data", "/app", "/home"]
+# Start the application using entrypoint
+CMD ["/app/entrypoint.sh"]

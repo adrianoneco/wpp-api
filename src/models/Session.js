@@ -19,6 +19,10 @@ const sessionSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  qrCodeUrl: {
+    type: String,
+    default: null,
+  },
   lastConnected: {
     type: Date,
     default: null,

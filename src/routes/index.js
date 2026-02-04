@@ -4,12 +4,44 @@ const mediaRoutes = require('./mediaRoutes');
 
 async function registerRoutes(fastify) {
   // Health check
-  fastify.get('/health', async () => {
+  fastify.get('/health', {
+    schema: {
+      tags: ['Health'],
+      summary: 'Verificar saúde da API',
+      description: 'Retorna o status da API e timestamp atual',
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', example: 'ok' },
+            timestamp: { type: 'string', format: 'date-time' },
+          },
+        },
+      },
+    },
+  }, async () => {
     return { status: 'ok', timestamp: new Date().toISOString() };
   });
 
   // API info
-  fastify.get('/', async () => {
+  fastify.get('/', {
+    schema: {
+      tags: ['Health'],
+      summary: 'Informações da API',
+      description: 'Retorna informações gerais sobre a API e endpoints disponíveis',
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            version: { type: 'string' },
+            description: { type: 'string' },
+            endpoints: { type: 'object' },
+          },
+        },
+      },
+    },
+  }, async () => {
     return {
       name: 'WPP API',
       version: '1.0.0',
@@ -19,6 +51,7 @@ async function registerRoutes(fastify) {
         messages: '/api/sessions/:sessionName/messages',
         media: '/api/media',
         health: '/health',
+        docs: '/docs',
       },
     };
   });

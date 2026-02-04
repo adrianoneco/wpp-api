@@ -1,65 +1,73 @@
-version: '3.8'
+name: wpp-multi-instance
 
 services:
-  # WPP API Application - Instance "suporte"
-  app-suporte:
+  # WPP API Application - Suporte TI
+  instance1:
     build: .
-    container_name: wpp-api-suporte
+    container_name: suporte-ti
     restart: unless-stopped
     ports:
-      - "3001:3000"
+      - "6781:3000"
     environment:
       - NODE_ENV=production
       - HOST=0.0.0.0
       - PORT=3000
-      - INSTANCE_NAME=suporte
-      - MONGODB_URI=mongodb://mongodb:27017/wpp-api
+      - APP_PROVIDER=LIVECHAT
+      - INSTANCE_NAME=suporte-ti
+      - PUBLIC_URL=http://192.168.3.39:6781
+      - MONGODB_URI=mongodb://mongodb:27017/suporte-ti
       - MINIO_ENDPOINT=minio
       - MINIO_PORT=9000
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin
-      - MINIO_BUCKET=wpp-media
+      - MINIO_BUCKET=suporte-ti
       - MINIO_USE_SSL=false
       - WPP_HEADLESS=true
     volumes:
-      - wpp_data:/data
+      - instance1_data:/data
     depends_on:
-      - mongodb
-      - minio
+      mongodb:
+        condition: service_healthy
+      minio:
+        condition: service_started
     networks:
       - wpp-network
 
-  # WPP API Application - Instance "vendas"
-  app-vendas:
+  # WPP API Application - Recepção
+  instance2:
     build: .
-    container_name: wpp-api-vendas
+    container_name: faturamento
     restart: unless-stopped
     ports:
-      - "3002:3000"
+      - "6782:3000"
     environment:
       - NODE_ENV=production
       - HOST=0.0.0.0
       - PORT=3000
-      - INSTANCE_NAME=vendas
-      - MONGODB_URI=mongodb://mongodb:27017/wpp-api
+      - APP_PROVIDER=LIVECHAT
+      - INSTANCE_NAME=faturamento
+      - PUBLIC_URL=http://192.168.3.39:6782
+      - MONGODB_URI=mongodb://mongodb:27017/faturamento
       - MINIO_ENDPOINT=minio
       - MINIO_PORT=9000
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin
-      - MINIO_BUCKET=wpp-media
+      - MINIO_BUCKET=faturamento
       - MINIO_USE_SSL=false
       - WPP_HEADLESS=true
     volumes:
-      - wpp_data:/data
+      - instance2_data:/data
     depends_on:
-      - mongodb
-      - minio
+      mongodb:
+        condition: service_healthy
+      minio:
+        condition: service_started
     networks:
       - wpp-network
 
-  # MongoDB Database
+  # MongoDB Database (4.4 for CPUs without AVX support)
   mongodb:
-    image: mongo:7.0
+    image: mongo:4.4
     container_name: wpp-mongodb
     restart: unless-stopped
     ports:
@@ -68,6 +76,12 @@ services:
       - mongodb_data:/data/db
     networks:
       - wpp-network
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # MinIO S3 Storage
   minio:
@@ -75,8 +89,8 @@ services:
     container_name: wpp-minio
     restart: unless-stopped
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "6520:9000"
+      - "6521:9001"
     environment:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
@@ -89,7 +103,12 @@ services:
 volumes:
   mongodb_data:
   minio_data:
-  wpp_data:
+  instance1_data:
+    driver: local
+
+  instance2_data:
+    driver: local
+
 
 networks:
   wpp-network:

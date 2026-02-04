@@ -11,11 +11,49 @@ const fastify = require('fastify')({
 });
 const cors = require('@fastify/cors');
 const multipart = require('@fastify/multipart');
+const swagger = require('@fastify/swagger');
+const swaggerUi = require('@fastify/swagger-ui');
 
 const config = require('./config');
 const { connectDatabase } = require('./config/database');
 const { minioService, wppConnectService } = require('./services');
 const registerRoutes = require('./routes');
+
+// Register Swagger documentation
+fastify.register(swagger, {
+  openapi: {
+    info: {
+      title: 'WPP API',
+      description: 'API para integração com WhatsApp usando WPPConnect. Permite enviar e receber mensagens, gerenciar sessões e fazer upload de mídia.',
+      version: '1.0.0',
+      contact: {
+        name: 'Suporte',
+      },
+    },
+    servers: [
+      {
+        url: config.server.publicUrl,
+        description: `Servidor ${config.instance.name}`,
+      },
+    ],
+    tags: [
+      { name: 'Health', description: 'Verificação de saúde da API' },
+      { name: 'Sessions', description: 'Gerenciamento de sessões WhatsApp' },
+      { name: 'Messages', description: 'Envio e recebimento de mensagens' },
+      { name: 'Media', description: 'Upload e gerenciamento de arquivos' },
+    ],
+  },
+});
+
+fastify.register(swaggerUi, {
+  routePrefix: '/docs',
+  uiConfig: {
+    docExpansion: 'list',
+    deepLinking: true,
+  },
+  staticCSP: false,
+  transformStaticCSP: (header) => header,
+});
 
 // Register plugins
 fastify.register(cors, {
@@ -63,16 +101,18 @@ const start = async () => {
     });
 
     console.log(`🚀 Server running at http://${config.server.host}:${config.server.port}`);
+    console.log(`📖 API Documentation: ${config.server.publicUrl}/docs`);
 
-    // Auto-create instance session if INSTANCE_NAME is set
+    // Auto-initialize instance session if INSTANCE_NAME is set
     if (config.instance.name && config.instance.name !== 'default') {
-      console.log(`📱 Starting fixed instance: ${config.instance.name}`);
+      console.log(`📱 Initializing instance: ${config.instance.name}`);
       try {
-        await wppConnectService.createSession(config.instance.name);
-        console.log(`✅ Instance '${config.instance.name}' started successfully`);
+        await wppConnectService.initializeInstanceSession(config.instance.name);
+        console.log(`✅ Instance '${config.instance.name}' initialized successfully`);
+        console.log(`   Check status at: ${config.server.publicUrl}/api/sessions/${config.instance.name}/status`);
+        console.log(`   Get QR Code at: ${config.server.publicUrl}/api/sessions/${config.instance.name}/qrcode`);
       } catch (err) {
-        console.error(`⚠️ Failed to start instance '${config.instance.name}':`, err.message);
-        console.log('You can still create the session manually via API');
+        console.error(`⚠️ Failed to initialize instance '${config.instance.name}':`, err.message);
       }
     }
   } catch (err) {
