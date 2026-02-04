@@ -1,4 +1,6 @@
 const wppconnect = require('@wppconnect-team/wppconnect');
+const fs = require('fs');
+const path = require('path');
 const config = require('../config');
 const { Session, Message } = require('../models');
 const minioService = require('./minioService');
@@ -8,12 +10,30 @@ class WppConnectService {
     this.sessions = new Map();
   }
 
+  ensureDirectories() {
+    const dirs = [
+      config.instance.dataPath,
+      config.instance.tokensPath,
+      config.instance.cachePath,
+    ];
+    
+    for (const dir of dirs) {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        console.log(`📁 Created directory: ${dir}`);
+      }
+    }
+  }
+
   async createSession(sessionName) {
     if (this.sessions.has(sessionName)) {
       return { success: false, message: 'Session already exists' };
     }
 
     try {
+      // Ensure data directories exist
+      this.ensureDirectories();
+
       // Update or create session in database
       await Session.findOneAndUpdate(
         { name: sessionName },
@@ -25,7 +45,9 @@ class WppConnectService {
         session: sessionName,
         headless: config.wppconnect.headless,
         useChrome: false,
+        folderNameToken: config.instance.tokensPath,
         puppeteerOptions: {
+          userDataDir: path.join(config.instance.cachePath, sessionName),
           args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',

@@ -44,6 +44,12 @@ fastify.setErrorHandler((error, request, reply) => {
 // Start server
 const start = async () => {
   try {
+    console.log(`📂 Instance: ${config.instance.name}`);
+    console.log(`📂 Data path: ${config.instance.dataPath}`);
+
+    // Ensure data directories exist
+    wppConnectService.ensureDirectories();
+
     // Connect to MongoDB
     await connectDatabase();
 
@@ -58,8 +64,8 @@ const start = async () => {
 
     console.log(`🚀 Server running at http://${config.server.host}:${config.server.port}`);
 
-    // Auto-create instance if INSTANCE_NAME is set
-    if (config.instance.name) {
+    // Auto-create instance session if INSTANCE_NAME is set
+    if (config.instance.name && config.instance.name !== 'default') {
       console.log(`📱 Starting fixed instance: ${config.instance.name}`);
       try {
         await wppConnectService.createSession(config.instance.name);

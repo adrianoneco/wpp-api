@@ -1,5 +1,8 @@
 require('dotenv').config();
 
+const instanceName = process.env.INSTANCE_NAME || 'default';
+const dataPath = `/data/${instanceName}`;
+
 module.exports = {
   // Server Configuration
   server: {
@@ -31,6 +34,9 @@ module.exports = {
 
   // Instance Configuration (for fixed instance mode)
   instance: {
-    name: process.env.INSTANCE_NAME || null,
+    name: instanceName,
+    dataPath: dataPath,
+    tokensPath: `${dataPath}/tokens`,
+    cachePath: `${dataPath}/cache`,
   },
 };

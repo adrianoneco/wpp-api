@@ -1,17 +1,18 @@
 version: '3.8'
 
 services:
-  # WPP API Application
-  app:
+  # WPP API Application - Instance "suporte"
+  app-suporte:
     build: .
-    container_name: wpp-api
+    container_name: wpp-api-suporte
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       - NODE_ENV=production
       - HOST=0.0.0.0
       - PORT=3000
+      - INSTANCE_NAME=suporte
       - MONGODB_URI=mongodb://mongodb:27017/wpp-api
       - MINIO_ENDPOINT=minio
       - MINIO_PORT=9000
@@ -19,10 +20,37 @@ services:
       - MINIO_SECRET_KEY=minioadmin
       - MINIO_BUCKET=wpp-media
       - MINIO_USE_SSL=false
-      - WPP_SESSION_NAME=wpp-session
       - WPP_HEADLESS=true
     volumes:
-      - ./tokens:/app/tokens
+      - wpp_data:/data
+    depends_on:
+      - mongodb
+      - minio
+    networks:
+      - wpp-network
+
+  # WPP API Application - Instance "vendas"
+  app-vendas:
+    build: .
+    container_name: wpp-api-vendas
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    environment:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=3000
+      - INSTANCE_NAME=vendas
+      - MONGODB_URI=mongodb://mongodb:27017/wpp-api
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=wpp-media
+      - MINIO_USE_SSL=false
+      - WPP_HEADLESS=true
+    volumes:
+      - wpp_data:/data
     depends_on:
       - mongodb
       - minio
@@ -61,6 +89,7 @@ services:
 volumes:
   mongodb_data:
   minio_data:
+  wpp_data:
 
 networks:
   wpp-network:

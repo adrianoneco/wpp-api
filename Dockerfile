@@ -28,8 +28,8 @@ RUN npm ci --only=production
 # Copy source code
 COPY . .
 
-# Create directory for tokens
-RUN mkdir -p tokens && chown -R node:node /app
+# Create data directory with proper permissions
+RUN mkdir -p /data && chown -R node:node /data /app
 
 # Switch to non-root user
 USER node

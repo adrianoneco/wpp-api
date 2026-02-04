@@ -64,6 +64,38 @@ INSTANCE_NAME=suporte
 
 This will automatically create and connect a WPPConnect session with the specified name when the application starts.
 
+### Data Storage
+
+Each instance stores its data in `/data/{INSTANCE_NAME}/`:
+
+```
+/data/
+├── suporte/
+│   ├── tokens/     # WPPConnect session tokens
+│   └── cache/      # Browser cache data
+├── vendas/
+│   ├── tokens/
+│   └── cache/
+└── ...
+```
+
+This allows running multiple isolated instances, each with its own data directory.
+
+### Running Multiple Instances
+
+The `docker-compose.yml` includes examples of running multiple instances:
+
+```bash
+# Start all services (MongoDB, MinIO, and two instances: suporte and vendas)
+docker-compose up -d
+
+# Access instances:
+# - suporte: http://localhost:3001
+# - vendas: http://localhost:3002
+```
+
+To add more instances, duplicate the app service in `docker-compose.yml` with a different `INSTANCE_NAME` and port.
+
 ## API Endpoints
 
 ### Health Check
